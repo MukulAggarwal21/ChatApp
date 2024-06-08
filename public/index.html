@@ -3,37 +3,76 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Chats!!</title>
   </head>
   <body>
     <h1>Chatting App</h1>
 
     <input type="text" id="message" placeholder="Enter Message " />
-    <button id="SendBtn">Send</button>
+    <!-- <button id="SendBtn">Send</button> -->
+
+    <form id="form" action="">
+      <!-- <input id="input" autocomplete="off" /> -->
+      <button type="button" id="SendBtn">Send</button>
+      <button type="button" id="toggle-btn">Disconnect</button>
+    </form>
 
     <div id="messages"></div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+      let counter = 0;
+
+      const socket = io({
+        auth: {
+          serverOffset: 0,
+        },
+        ackTimeout: 10000,
+        retries: 3,
+      });
       const sendBtn = document.getElementById("SendBtn");
       const messageInput = document.getElementById("message");
       const allMessages = document.getElementById("messages");
+      const toggleButton = document.getElementById("toggle-btn");
 
-      socket.on("message", (message) => {
-        console.log("socket emmited")
-        
-        const p = document.createElement('p');
+      toggleButton.addEventListener("click", (e) => {
+        e.preventDefault();
+ 
+        if (socket.connected) {
+          // compute a unique offset
+          // const clientOffset = `${socket.id}-${counter++}`;
+          // socket.emit('message', messageInput.value , clientOffset);
+          toggleButton.innerText = "Connect";
+          socket.disconnect();
+        } else {
+          toggleButton.innerText = "Disconnect";
+          socket.connect();
+        }
+      });
+
+      socket.on("message", (message, serverOffset) => {
+        console.log("socket emmited");
+        const p = document.createElement("p");
         p.textContent = message;
         allMessages.appendChild(p);
-         console.log(message);
+        console.log(message);
+        window.scrollTo(0, document.body.scrollHeight);
+        socket.auth.serverOffset = serverOffset;
       });
+
       sendBtn.addEventListener("click", (e) => {
-        console.log("button clicked")
+        console.log("button clicked");
         const message = messageInput.value;
-        socket.emit('message' , message)
-         messageInput.value="";
-       
+        socket.emit("message", message);
+
+        if (message) {
+          // compute a unique offset
+          const clientOffset = `${socket.id}-${counter++}`;
+          socket.emit("message", message, clientOffset, () => {
+            console.log("Message acknowledged");
+          });
+          messageInput.value = "";
+        }
       });
     </script>
   </body>
